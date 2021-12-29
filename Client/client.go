@@ -6,12 +6,13 @@ import (
 	"log"
 
 	"github.com/ThomasITU/DISYSPrep/Proto"
-
 	"google.golang.org/grpc"
+
+	h "../HelperMethod"
 )
 
 const (
-	ADDRESS = "localhost:5001"
+	SERVER_ADDRESS = "localhost:5000"
 )
 
 type User struct {
@@ -22,7 +23,7 @@ func main() {
 
 	//init
 	//setup a connection, this is a blocking call
-	conn, err := grpc.Dial(ADDRESS, grpc.WithBlock())
+	conn, err := grpc.Dial(SERVER_ADDRESS, grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -50,7 +51,7 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 			switch input {
 			case "getvalue":
 				response, err := client.GetValue(ctx, &Proto.GetRequest{})
-				CheckError(err, "ListenForInput")
+				h.CheckError(err, "ListenForInput")
 				fmt.Println(response)
 			case "setvalue":
 				// implement set logic
@@ -72,12 +73,5 @@ func ChooseUserId() int {
 		} else {
 			fmt.Printf("\nSomething went wrong when processing your input: %v\nTry a positive integer like 1, 2, 3, ...", userId)
 		}
-	}
-}
-
-// helper method to help find error locations
-func CheckError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("happened inside method: %s err: %v", msg, err)
 	}
 }
