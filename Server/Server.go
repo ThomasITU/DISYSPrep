@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"sync"
 
-	h "../HelperMethod"
+	h "github.com/ThomasITU/DISYSPrep/helpermethod"
+
 	"google.golang.org/grpc"
 
 	"github.com/ThomasITU/DISYSPrep/Proto"
@@ -56,20 +57,31 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 			break
 		}
 	}
-	
+
 	//add userid to slice
 	if msg == "" {
 		s.connectedUsers = append(s.connectedUsers, userId)
-		msg = fmt.Sprintf("Welcome user: %v", userId)			
+		msg = fmt.Sprintf("Welcome user: %v", userId)
 	}
 	s.arbiter.Unlock()
 	return &Proto.Response{Msg: msg}, nil
 }
 
-// getvalue grpc method logic
+// get value grpc method logic
 func (s *Server) GetValue(ctx context.Context, request *Proto.GetRequest) (*Proto.Value, error) {
 	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId}
 	return &value, nil
+}
+
+// set value grpc method logic
+func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Proto.Response, error) {
+	s.arbiter.Lock()
+	temp := s.latestValue
+	s.latestValue = Value{value: request.GetRequestedValue(), userId: request.GetUserId()}
+	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.value, temp.userId, s.latestValue.value, s.latestValue.userId)
+	h.Logger(msg, SERVER_LOG_FILE)
+	s.arbiter.Unlock()
+	return &Proto.Response{Msg: msg}, nil
 }
 
 // start server service

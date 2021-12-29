@@ -1,4 +1,4 @@
-package helperMethod
+package helpermethod
 
 import (
 	"log"

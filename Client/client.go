@@ -6,9 +6,8 @@ import (
 	"log"
 
 	"github.com/ThomasITU/DISYSPrep/Proto"
+	h "github.com/ThomasITU/DISYSPrep/helpermethod"
 	"google.golang.org/grpc"
-
-	h "../HelperMethod"
 )
 
 const (
@@ -23,7 +22,7 @@ func main() {
 
 	//init
 	//setup a connection, this is a blocking call
-	conn, err := grpc.Dial(SERVER_ADDRESS, grpc.WithBlock())
+	conn, err := grpc.Dial(SERVER_ADDRESS, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -49,15 +48,22 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 		fmt.Scanln(&input)
 		if len(input) > 0 {
 			switch input {
+			case "joinchat":
+				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId})
+				h.CheckError(err, "listenForInput joinchat")
+				fmt.Println(response.GetMsg())
 			case "getvalue":
 				response, err := client.GetValue(ctx, &Proto.GetRequest{})
-				h.CheckError(err, "ListenForInput")
+				h.CheckError(err, "ListenForInput getvalue")
 				fmt.Println(response)
 			case "setvalue":
-				// implement set logic
-				fmt.Println("Reached set value")
+				fmt.Println("Choose an integer you want to set the value")
+				var value int64
+				fmt.Scanln(&value)
+				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value})
+				h.CheckError(err, "ListenForInput setvalue")
+				fmt.Println(response.GetMsg())
 			}
-
 		}
 	}
 }
