@@ -5,13 +5,13 @@ Some hopefully useful code snippets for DISYS exam
 protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative Proto/renameService.proto
 
 # How to run
-- Start one server, cd into /server 
+- Start one server
 
-`go run .`
+`go run .\Server\Server.go`
 
-- Start multiple clients, cd into /client 
+- Start multiple clients
 
-`go run .`
+`go run .\Client\Client.go`
 
 ## 3 commands from client further instructions will be displayed in the terminal
 
