@@ -5,11 +5,15 @@ Some hopefully useful code snippets for DISYS exam
 protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative Proto/renameService.proto
 
 # How to run
-- Start one server, cd into /server 
+- Start one front end, cd into /FrontEnd 
 
 `go run .`
 
-- Start multiple clients, cd into /client 
+- start multiple servers (up to MAX_REPLICAS, default = 5), cd into /Server
+
+`go run .`
+
+- Start multiple clients, cd into /Client 
 
 `go run .`
 
@@ -23,4 +27,6 @@ protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=p
 
 
 # Details
-Server log is written everytime setvalue is invoked
+This is active replication, meaning **client** request are handle by the **front end** and execute on all the **servers**
+Front end log is written everytime setvalue is invoked
+A Server log for each port is written everytime setvalue is invoked
