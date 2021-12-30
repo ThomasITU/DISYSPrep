@@ -1,13 +1,19 @@
 package HelperMethod
 
 import (
+	"context"
 	"log"
 	"os"
+	"strconv"
+	"time"
+
+	"github.com/ThomasITU/DISYSPrep/Proto"
+	"google.golang.org/grpc"
 )
 
 const (
 	FRONT_END_ADDRESS = "localhost:5000"
-	MAX_REPLICAS = 5
+	MAX_REPLICAS      = 5
 )
 
 type Value struct {
@@ -32,4 +38,17 @@ func Logger(message string, logFileName string) {
 
 	log.SetOutput(file)
 	log.Println(message)
+}
+
+// connect to a port and check if alive
+func ConnectToPort(port int) (*Proto.ProtoServiceClient, string) {
+	conn, err := grpc.Dial("localhost:"+strconv.Itoa(port), grpc.WithTimeout(time.Millisecond*250), grpc.WithInsecure()) // grpc.WithBlock(),
+	if err == nil {
+		ctx := context.Background()
+		defer ctx.Done()
+		client := Proto.NewProtoServiceClient(conn)
+		response, _ := client.JoinService(ctx, &Proto.JoinRequest{UserId: -1})
+		return &client, response.GetMsg()
+	}
+	return nil, "unknown"
 }

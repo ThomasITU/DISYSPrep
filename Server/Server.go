@@ -6,7 +6,6 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"time"
 
 	h "github.com/ThomasITU/DISYSPrep/HelperMethod"
 
@@ -73,17 +72,11 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 func FindFreePort() int {
 	for i := 1; i < (h.MAX_REPLICAS + 1); i++ {
 		serverPort := SERVER_PORT + i
-		conn, err := grpc.Dial("localhost:"+strconv.Itoa(serverPort), grpc.WithTimeout(time.Millisecond*250), grpc.WithInsecure())
-		if err == nil {
-			defer conn.Close()
-			ctx := context.Background()
-			client := Proto.NewProtoServiceClient(conn)
-			response, _ := client.JoinService(ctx, &Proto.JoinRequest{UserId: -1})
-			if response.GetMsg() == "alive" {
-				continue
-			} else {
-				return serverPort
-			}
+		_, status := h.ConnectToPort(serverPort)
+		if status == "alive" {
+			continue
+		} else {
+			return serverPort
 		}
 	}
 	return -1
