@@ -41,14 +41,14 @@ func Logger(message string, logFileName string) {
 }
 
 // connect to a port and check if alive
-func ConnectToPort(port int) (*Proto.ProtoServiceClient, string) {
+func ConnectToPort(port int) (Proto.ProtoServiceClient, string) {
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(port), grpc.WithTimeout(time.Millisecond*250), grpc.WithInsecure()) // grpc.WithBlock(),
 	if err == nil {
 		ctx := context.Background()
 		defer ctx.Done()
 		client := Proto.NewProtoServiceClient(conn)
 		response, _ := client.JoinService(ctx, &Proto.JoinRequest{UserId: -1})
-		return &client, response.GetMsg()
+		return client, response.GetMsg()
 	}
 	return nil, "unknown"
 }
