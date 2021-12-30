@@ -17,49 +17,31 @@ import (
 const (
 	SERVER_PORT     = 5000
 	SERVER_LOG_FILE = "serverLog"
+	MAX_REPLICAS    = 5
 )
 
 type Server struct {
 	Proto.UnimplementedProtoServiceServer
-	port           int
-	latestValue    h.Value
-	connectedUsers []int
-	arbiter        sync.Mutex
+	port        int
+	latestValue h.Value
+	arbiter     sync.Mutex
 }
 
 func main() {
 
 	//init
 	initValue := h.Value{Value: -1, UserId: -1}
-	users := make([]int, 0)
 	lock := sync.Mutex{}
-	server := Server{port: SERVER_PORT, latestValue: initValue, connectedUsers: users, arbiter: lock}
+	serverPort := FindFreePort()
+	if serverPort == -1 {
+		fmt.Printf("Can't start more than %v", MAX_REPLICAS)
+		return
+	}
+
+	server := Server{port: serverPort, latestValue: initValue, arbiter: lock}
 
 	listen(&server)
 	fmt.Println("main has ended")
-}
-
-// JoinService grpc method logic
-func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*Proto.Response, error) {
-	s.arbiter.Lock()
-	var msg string
-	userId := int(request.GetUserId())
-
-	// check if user id already exist in the array
-	for _, user := range s.connectedUsers {
-		if user == userId {
-			msg = fmt.Sprintf("A user with id: %v has already joined", userId)
-			break
-		}
-	}
-
-	//add userid to slice
-	if msg == "" {
-		s.connectedUsers = append(s.connectedUsers, userId)
-		msg = fmt.Sprintf("Welcome user: %v", userId)
-	}
-	s.arbiter.Unlock()
-	return &Proto.Response{Msg: msg}, nil
 }
 
 // get value grpc method logic
@@ -77,6 +59,18 @@ func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Prot
 	h.Logger(msg, SERVER_LOG_FILE)
 	s.arbiter.Unlock()
 	return &Proto.Response{Msg: msg}, nil
+}
+
+// connect to ports until a free port is found
+func FindFreePort() int {
+	for i := 1; i < (MAX_REPLICAS + 1); i++ {
+		conn, err := grpc.Dial("localhost:"+strconv.Itoa(SERVER_PORT+i), grpc.WithInsecure(), grpc.WithBlock())
+		if err == nil {
+			defer conn.Close()
+			return i + SERVER_PORT
+		}
+	}
+	return -1
 }
 
 // start server service
