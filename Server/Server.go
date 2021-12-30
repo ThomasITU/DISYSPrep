@@ -35,7 +35,7 @@ func main() {
 		return
 	}
 	server := Server{port: serverPort, latestValue: initValue, arbiter: sync.Mutex{}}
-	fmt.Printf("Succesfully got port: %v", server.port) // sanity checks
+	fmt.Printf("Succesfully got port: %v\n", server.port) // sanity checks
 
 	listen(&server)
 	fmt.Println("main has ended")
@@ -52,8 +52,8 @@ func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Prot
 	s.arbiter.Lock()
 	temp := s.latestValue
 	s.latestValue = h.Value{Value: request.GetRequestedValue(), UserId: request.GetUserId()}
-	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.Value, temp.UserId, s.latestValue.Value, s.latestValue.UserId)
-	h.Logger(msg, SERVER_LOG_FILE)
+	msg := fmt.Sprintf("Updated the value: %v by %v to %v by user %v ", temp.Value, temp.UserId, s.latestValue.Value, s.latestValue.UserId)
+	h.Logger(msg, SERVER_LOG_FILE+strconv.Itoa(s.port))
 	s.arbiter.Unlock()
 	return &Proto.Response{Msg: msg}, nil
 }
