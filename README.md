@@ -27,7 +27,7 @@ protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=p
 
 
 # Details
-This is active replication, meaning **client** request are handle by the **front end** and execute on all the **servers**
+This is active replication, meaning **client** request are handle by the **front end** and executed on all the **servers**
 
 A Front end log is written everytime setvalue is invoked
 
