@@ -35,7 +35,7 @@ func main() {
 	frontEnd := FrontEnd{connectedUsers: users, replicaServerPorts: replicaServers, arbiter: sync.Mutex{}}
 	go listen(&frontEnd)
 	for {
-		// begin searching for servers every 5 seconds
+		// begin searching for replicas/servers every 5 seconds
 		frontEnd.FindActiveServers()
 		time.Sleep(5 * time.Second)
 	}
@@ -63,9 +63,10 @@ func (fe *FrontEnd) JoinService(ctx context.Context, request *Proto.JoinRequest)
 	return &Proto.Response{Msg: msg}, nil
 }
 
-// get value grpc method logic
+// get value using replicas/servers if more then half have the same value, return that value
 func (fe *FrontEnd) GetValue(ctx context.Context, request *Proto.GetRequest) (*Proto.Value, error) {
 	values := make(map[h.Value]int)
+	fe.arbiter.Lock()
 	for port, alive := range fe.replicaServerPorts {
 		if alive {
 			client, state := h.ConnectToPort(port)
@@ -77,6 +78,7 @@ func (fe *FrontEnd) GetValue(ctx context.Context, request *Proto.GetRequest) (*P
 			}
 		}
 	}
+	fe.arbiter.Unlock()
 	currentReplicas := 0
 	for _, votes := range values {
 		currentReplicas += votes
@@ -90,8 +92,9 @@ func (fe *FrontEnd) GetValue(ctx context.Context, request *Proto.GetRequest) (*P
 	return nil, errors.New("replicas couldn't agree on one value")
 }
 
-// set value grpc method logic
+// set value using replicas/servers setvalue method
 func (fe *FrontEnd) SetValue(ctx context.Context, request *Proto.SetRequest) (*Proto.Response, error) {
+	fe.arbiter.Lock()
 	failedUpdates := 0
 	var msg string
 	for port, alive := range fe.replicaServerPorts {
@@ -107,19 +110,22 @@ func (fe *FrontEnd) SetValue(ctx context.Context, request *Proto.SetRequest) (*P
 	}
 	if failedUpdates < (1+len(fe.replicaServerPorts))/2 {
 		msg = fmt.Sprintf("updated more than half of the replicas with the value %v by user: %v", request.GetRequestedValue(), request.GetUserId())
-	}else {
+	} else {
 		msg = "failed to update more then half of the replicas"
 	}
 	h.Logger(msg, FRONT_END_LOG_FILE)
+	fmt.Println(msg)
+	fe.arbiter.Unlock()
 	return &Proto.Response{Msg: msg}, nil
 }
 
+// check if a replica/server is running on the port, indicate as alive by setting map to true, checking ports up to MAX_REPLICAS
 func (fe *FrontEnd) FindActiveServers() {
 	for i := 0; i < h.MAX_REPLICAS; i++ {
 		serverPort := SERVER_PORT + i
 		_, status := h.ConnectToPort(serverPort)
 		if status == "alive" {
-			fmt.Printf("found alive server at port : %v\n", serverPort)
+			// fmt.Printf("found alive server at port : %v\n", serverPort)
 			fe.replicaServerPorts[serverPort] = true
 		} else if status == "unknown" {
 			fe.replicaServerPorts[serverPort] = false
@@ -128,7 +134,9 @@ func (fe *FrontEnd) FindActiveServers() {
 
 }
 
+// start front end service
 func listen(fe *FrontEnd) {
+
 	//listen on port
 	lis, err := net.Listen("tcp", h.FRONT_END_ADDRESS)
 	h.CheckError(err, "server setup net.listen")
