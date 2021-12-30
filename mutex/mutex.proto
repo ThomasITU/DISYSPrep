@@ -1,0 +1,20 @@
+syntax = "proto3";
+package mutex;
+
+option go_package = "./mutex";
+
+service mutexService{
+    rpc Token(EmptyRequest) returns (EmptyResponse);
+}
+
+message EmptyRequest{
+    
+}
+message EmptyResponse{
+
+}
+
+
+
+
+
