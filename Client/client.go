@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 
+	h "github.com/ThomasITU/DISYSPrep/HelperMethod"
 	"github.com/ThomasITU/DISYSPrep/Proto"
-	h "github.com/ThomasITU/DISYSPrep/helpermethod"
 	"google.golang.org/grpc"
 )
 
@@ -18,18 +17,16 @@ func main() {
 	//init
 	//setup a connection, this is a blocking call
 	conn, err := grpc.Dial(h.FRONT_END_ADDRESS, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-	}
+	h.CheckError(err, "Main when to FRONT_END_ADDRESS")
 	defer conn.Close()
-
-	//create user
-	id := ChooseUserId()
-	user := User{userId: int64(id)}
 
 	//create client
 	ctx := context.Background()
 	client := Proto.NewProtoServiceClient(conn)
+
+	//create user
+	id := ChooseUserId()
+	user := User{userId: int64(id)}
 
 	//wait for input
 	user.ListenForInput(client, ctx)
