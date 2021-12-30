@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"sync"
 
-	h "github.com/ThomasITU/DISYSPrep/helpermethod"
+	h "github.com/ThomasITU/DISYSPrep/HelperMethod"
 
 	"google.golang.org/grpc"
 
@@ -22,20 +22,15 @@ const (
 type Server struct {
 	Proto.UnimplementedProtoServiceServer
 	port           int
-	latestValue    Value
+	latestValue    h.Value
 	connectedUsers []int
 	arbiter        sync.Mutex
-}
-
-type Value struct {
-	value  int64
-	userId int64
 }
 
 func main() {
 
 	//init
-	initValue := Value{value: -1, userId: -1}
+	initValue := h.Value{Value: -1, UserId: -1}
 	users := make([]int, 0)
 	lock := sync.Mutex{}
 	server := Server{port: SERVER_PORT, latestValue: initValue, connectedUsers: users, arbiter: lock}
@@ -69,7 +64,7 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 
 // get value grpc method logic
 func (s *Server) GetValue(ctx context.Context, request *Proto.GetRequest) (*Proto.Value, error) {
-	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId}
+	value := Proto.Value{CurrentValue: s.latestValue.Value, UserId: s.latestValue.UserId}
 	return &value, nil
 }
 
@@ -77,8 +72,8 @@ func (s *Server) GetValue(ctx context.Context, request *Proto.GetRequest) (*Prot
 func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Proto.Response, error) {
 	s.arbiter.Lock()
 	temp := s.latestValue
-	s.latestValue = Value{value: request.GetRequestedValue(), userId: request.GetUserId()}
-	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.value, temp.userId, s.latestValue.value, s.latestValue.userId)
+	s.latestValue = h.Value{Value: request.GetRequestedValue(), UserId: request.GetUserId()}
+	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.Value, temp.UserId, s.latestValue.Value, s.latestValue.UserId)
 	h.Logger(msg, SERVER_LOG_FILE)
 	s.arbiter.Unlock()
 	return &Proto.Response{Msg: msg}, nil

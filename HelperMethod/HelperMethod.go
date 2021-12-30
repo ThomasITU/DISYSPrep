@@ -10,8 +10,8 @@ const (
 )
 
 type Value struct {
-	value  int64
-	userId int64
+	Value  int64
+	UserId int64
 }
 
 // helper method to help find error locations
