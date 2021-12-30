@@ -1,9 +1,18 @@
-package helpermethod
+package HelperMethod
 
 import (
 	"log"
 	"os"
 )
+
+const (
+	FRONT_END_ADDRESS = "localhost:5000"
+)
+
+type Value struct {
+	value  int64
+	userId int64
+}
 
 // helper method to help find error locations
 func CheckError(err error, msg string) {
@@ -14,12 +23,12 @@ func CheckError(err error, msg string) {
 
 // log message in file
 func Logger(message string, logFileName string) {
-	f, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	file, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
-	defer f.Close()
+	defer file.Close()
 
-	log.SetOutput(f)
+	log.SetOutput(file)
 	log.Println(message)
 }

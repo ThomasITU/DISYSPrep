@@ -10,19 +10,14 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	SERVER_ADDRESS = "localhost:5000"
-)
-
 type User struct {
 	userId int64
 }
 
 func main() {
-
 	//init
 	//setup a connection, this is a blocking call
-	conn, err := grpc.Dial(SERVER_ADDRESS, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(h.FRONT_END_ADDRESS, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
