@@ -7,6 +7,7 @@ import (
 
 const (
 	FRONT_END_ADDRESS = "localhost:5000"
+	MAX_REPLICAS = 5
 )
 
 type Value struct {

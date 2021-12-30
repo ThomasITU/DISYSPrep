@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 
 	h "github.com/ThomasITU/DISYSPrep/HelperMethod"
 
@@ -17,7 +18,6 @@ import (
 const (
 	SERVER_PORT     = 5000
 	SERVER_LOG_FILE = "serverLog"
-	MAX_REPLICAS    = 5
 )
 
 type Server struct {
@@ -28,17 +28,15 @@ type Server struct {
 }
 
 func main() {
-
 	//init
 	initValue := h.Value{Value: -1, UserId: -1}
-	lock := sync.Mutex{}
 	serverPort := FindFreePort()
-	if serverPort == -1 {
-		fmt.Printf("Can't start more than %v", MAX_REPLICAS)
+	if serverPort == -1 { // if no free port -1
+		fmt.Printf("Can't start more than %v", h.MAX_REPLICAS)
 		return
 	}
-
-	server := Server{port: serverPort, latestValue: initValue, arbiter: lock}
+	server := Server{port: serverPort, latestValue: initValue, arbiter: sync.Mutex{}}
+	fmt.Printf("Succesfully got port: %v", server.port) // sanity checks
 
 	listen(&server)
 	fmt.Println("main has ended")
@@ -61,13 +59,31 @@ func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Prot
 	return &Proto.Response{Msg: msg}, nil
 }
 
+func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*Proto.Response, error) {
+	userId := request.GetUserId()
+	if userId == -1 {
+		return &Proto.Response{Msg: "alive"}, nil
+	} else {
+		msg := fmt.Sprintf("Welcome to our marvelous service user: %v ", userId)
+		return &Proto.Response{Msg: msg}, nil
+	}
+}
+
 // connect to ports until a free port is found
 func FindFreePort() int {
-	for i := 1; i < (MAX_REPLICAS + 1); i++ {
-		conn, err := grpc.Dial("localhost:"+strconv.Itoa(SERVER_PORT+i), grpc.WithInsecure(), grpc.WithBlock())
+	for i := 1; i < (h.MAX_REPLICAS + 1); i++ {
+		serverPort := SERVER_PORT + i
+		conn, err := grpc.Dial("localhost:"+strconv.Itoa(serverPort), grpc.WithTimeout(time.Millisecond*250), grpc.WithInsecure())
 		if err == nil {
 			defer conn.Close()
-			return i + SERVER_PORT
+			ctx := context.Background()
+			client := Proto.NewProtoServiceClient(conn)
+			response, _ := client.JoinService(ctx, &Proto.JoinRequest{UserId: -1})
+			if response.GetMsg() == "alive" {
+				continue
+			} else {
+				return serverPort
+			}
 		}
 	}
 	return -1
