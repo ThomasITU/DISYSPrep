@@ -21,10 +21,11 @@ const (
 
 type Server struct {
 	Proto.UnimplementedProtoServiceServer
-	port           int
-	latestValue    Value
-	connectedUsers []int
-	arbiter        sync.Mutex
+	port             int
+	latestValue      Value
+	connectedUsers   []int
+	arbiter          sync.Mutex
+	lamportTimeStamp int64
 }
 
 type Value struct {
@@ -37,8 +38,7 @@ func main() {
 	//init
 	initValue := Value{value: -1, userId: -1}
 	users := make([]int, 0)
-	lock := sync.Mutex{}
-	server := Server{port: SERVER_PORT, latestValue: initValue, connectedUsers: users, arbiter: lock}
+	server := Server{port: SERVER_PORT, latestValue: initValue, connectedUsers: users, arbiter: sync.Mutex{}, lamportTimeStamp: 0}
 
 	listen(&server)
 	fmt.Println("main has ended")
@@ -63,13 +63,19 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 		s.connectedUsers = append(s.connectedUsers, userId)
 		msg = fmt.Sprintf("Welcome user: %v", userId)
 	}
+	s.IncrementLamportTimestamp(request.GetTimestamp())
+	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	s.arbiter.Unlock()
-	return &Proto.Response{Msg: msg}, nil
+	return &Proto.Response{Msg: msg, Timestamp: (s.lamportTimeStamp + 1)}, nil
 }
 
 // get value grpc method logic
 func (s *Server) GetValue(ctx context.Context, request *Proto.GetRequest) (*Proto.Value, error) {
-	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId}
+	s.IncrementLamportTimestamp(request.GetTimestamp())
+	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId, Timestamp: (s.lamportTimeStamp + 1)}
+
+	msg := fmt.Sprintf("value: %v by user: %v", value.GetCurrentValue(), value.GetUserId())
+	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	return &value, nil
 }
 
@@ -78,10 +84,11 @@ func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Prot
 	s.arbiter.Lock()
 	temp := s.latestValue
 	s.latestValue = Value{value: request.GetRequestedValue(), userId: request.GetUserId()}
+	s.IncrementLamportTimestamp(request.GetTimestamp())
 	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.value, temp.userId, s.latestValue.value, s.latestValue.userId)
-	h.Logger(msg, SERVER_LOG_FILE)
+	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	s.arbiter.Unlock()
-	return &Proto.Response{Msg: msg}, nil
+	return &Proto.Response{Msg: msg, Timestamp: (s.lamportTimeStamp + 1)}, nil
 }
 
 // start server service
@@ -97,4 +104,9 @@ func listen(s *Server) {
 	Proto.RegisterProtoServiceServer(grpcServer, s)
 	errorMsg := grpcServer.Serve(lis)
 	h.CheckError(errorMsg, "server listen register server service")
+}
+
+//
+func (s *Server) IncrementLamportTimestamp(clientTimeStamp int64) {
+	s.lamportTimeStamp = (h.Max(clientTimeStamp, s.lamportTimeStamp) + 1)
 }
