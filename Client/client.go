@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/ThomasITU/DISYSPrep/Proto"
 	h "github.com/ThomasITU/DISYSPrep/helpermethod"
@@ -15,7 +16,9 @@ const (
 )
 
 type User struct {
-	userId int64
+	userId           int64
+	lamportTimeStamp int64
+	arbiter          sync.Mutex
 }
 
 func main() {
@@ -30,7 +33,7 @@ func main() {
 
 	//create user
 	id := ChooseUserId()
-	user := User{userId: int64(id)}
+	user := User{userId: int64(id), lamportTimeStamp: 0, arbiter: sync.Mutex{}}
 
 	//create client
 	ctx := context.Background()
@@ -51,21 +54,33 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 			case "joinchat":
 				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId})
 				h.CheckError(err, "listenForInput joinchat")
+				u.IncrementLamportTimestamp(response.GetTimestamp())
 				fmt.Println(response.GetMsg())
 			case "getvalue":
+
 				response, err := client.GetValue(ctx, &Proto.GetRequest{})
+
 				h.CheckError(err, "ListenForInput getvalue")
+				u.IncrementLamportTimestamp(response.GetTimestamp())
 				fmt.Println(response)
 			case "setvalue":
-				fmt.Println("Choose an integer you want to set the value")
 				var value int64
-				fmt.Scanln(&value)
+				for value == 0{
+					fmt.Println("Choose an none 0 integer you want the value set to")
+					fmt.Scanln(&value)
+				}
 				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value})
 				h.CheckError(err, "ListenForInput setvalue")
+				u.IncrementLamportTimestamp(response.GetTimestamp())
 				fmt.Println(response.GetMsg())
+				value = 0
 			}
 		}
 	}
+}
+
+func (u *User) IncrementLamportTimestamp(serverTimeStamp int64) {
+	u.lamportTimeStamp = (h.Max(u.lamportTimeStamp, serverTimeStamp) + 1)
 }
 
 // helper method wait for user to input a wanted userid
