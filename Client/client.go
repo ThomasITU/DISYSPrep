@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 
 	"github.com/ThomasITU/DISYSPrep/Proto"
@@ -12,7 +13,8 @@ import (
 )
 
 const (
-	SERVER_ADDRESS = "localhost:5000"
+	SERVER_ADDRESS  = "localhost:5000"
+	CLIENT_LOG_FILE = "clientLog_"
 )
 
 type User struct {
@@ -53,20 +55,27 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 			switch input {
 			case "joinchat":
 				u.arbiter.Lock()
-				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId, Timestamp: (u.lamportTimeStamp + 1)})
+				u.lamportTimeStamp = (u.lamportTimeStamp + 1)
+				h.LoggerWithTimestamp("Request: Joining service", CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
+
+				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId, Timestamp: u.lamportTimeStamp})
 				h.CheckError(err, "listenForInput joinchat")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
-				u.arbiter.Unlock()
 
+				h.LoggerWithTimestamp("Receive: Joining service", CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
+				u.arbiter.Unlock()
 				fmt.Println(response.GetMsg())
 			case "getvalue":
 				u.arbiter.Lock()
+				u.lamportTimeStamp = (u.lamportTimeStamp + 1)
+				h.LoggerWithTimestamp("Request - getvalue: ", CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
 
-				response, err := client.GetValue(ctx, &Proto.GetRequest{Timestamp: (u.lamportTimeStamp + 1)})
+				response, err := client.GetValue(ctx, &Proto.GetRequest{Timestamp: u.lamportTimeStamp})
 				h.CheckError(err, "ListenForInput getvalue")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
-				u.arbiter.Unlock()
 
+				h.LoggerWithTimestamp("Receive - getvalue: "+response.String(), CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
+				u.arbiter.Unlock()
 				fmt.Println(response)
 			case "setvalue":
 				var value int64
@@ -76,18 +85,22 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 				}
 
 				u.arbiter.Lock()
-				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value, Timestamp: (u.lamportTimeStamp + 1)})
+				u.lamportTimeStamp = (u.lamportTimeStamp + 1)
+				h.LoggerWithTimestamp("Request - setvalue: ", CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
+
+				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value, Timestamp: u.lamportTimeStamp})
 				h.CheckError(err, "ListenForInput setvalue")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
-				u.arbiter.Unlock()
+				h.LoggerWithTimestamp("Receive - setvalue: "+response.GetMsg(), CLIENT_LOG_FILE+strconv.Itoa(int(u.userId)), u.lamportTimeStamp)
 
+				u.arbiter.Unlock()
 				fmt.Println(response.GetMsg())
-				value = 0 // reset the value
 			}
 		}
 	}
 }
 
+//
 func (u *User) IncrementLamportTimestamp(serverTimeStamp int64) {
 	u.lamportTimeStamp = (h.Max(u.lamportTimeStamp, serverTimeStamp) + 1)
 }

@@ -40,6 +40,7 @@ func main() {
 	users := make([]int, 0)
 	server := Server{port: SERVER_PORT, latestValue: initValue, connectedUsers: users, arbiter: sync.Mutex{}, lamportTimeStamp: 0}
 
+	fmt.Println("server running")
 	listen(&server)
 	fmt.Println("main has ended")
 }
@@ -49,7 +50,8 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 	s.arbiter.Lock()
 	var msg string
 	userId := int(request.GetUserId())
-
+	s.IncrementLamportTimestamp(request.GetTimestamp())
+	h.LoggerWithTimestamp("request Received by: "+strconv.Itoa(userId), SERVER_LOG_FILE, s.lamportTimeStamp)
 	// check if user id already exist in the array
 	for _, user := range s.connectedUsers {
 		if user == userId {
@@ -63,32 +65,38 @@ func (s *Server) JoinService(ctx context.Context, request *Proto.JoinRequest) (*
 		s.connectedUsers = append(s.connectedUsers, userId)
 		msg = fmt.Sprintf("Welcome user: %v", userId)
 	}
-	s.IncrementLamportTimestamp(request.GetTimestamp())
+	s.lamportTimeStamp = (s.lamportTimeStamp + 1)
 	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	s.arbiter.Unlock()
-	return &Proto.Response{Msg: msg, Timestamp: (s.lamportTimeStamp + 1)}, nil
+	return &Proto.Response{Msg: msg, Timestamp: s.lamportTimeStamp}, nil
 }
 
 // get value grpc method logic
 func (s *Server) GetValue(ctx context.Context, request *Proto.GetRequest) (*Proto.Value, error) {
 	s.IncrementLamportTimestamp(request.GetTimestamp())
-	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId, Timestamp: (s.lamportTimeStamp + 1)}
+	h.LoggerWithTimestamp("getvalue request received", SERVER_LOG_FILE, s.lamportTimeStamp)
+
+	s.lamportTimeStamp = (s.lamportTimeStamp + 1)
+	value := Proto.Value{CurrentValue: s.latestValue.value, UserId: s.latestValue.userId, Timestamp: s.lamportTimeStamp}
 
 	msg := fmt.Sprintf("value: %v by user: %v", value.GetCurrentValue(), value.GetUserId())
-	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
+	h.LoggerWithTimestamp("send - "+msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	return &value, nil
 }
 
 // set value grpc method logic
 func (s *Server) SetValue(ctx context.Context, request *Proto.SetRequest) (*Proto.Response, error) {
 	s.arbiter.Lock()
+	s.IncrementLamportTimestamp(request.GetTimestamp())
+	h.LoggerWithTimestamp("setvalue request received - ", SERVER_LOG_FILE, s.lamportTimeStamp)
 	temp := s.latestValue
 	s.latestValue = Value{value: request.GetRequestedValue(), userId: request.GetUserId()}
-	s.IncrementLamportTimestamp(request.GetTimestamp())
-	msg := fmt.Sprintf("Updated the value: %v by %v to %v by %v ", temp.value, temp.userId, s.latestValue.value, s.latestValue.userId)
-	h.LoggerWithTimestamp(msg, SERVER_LOG_FILE, s.lamportTimeStamp)
+
+	msg := fmt.Sprintf("Updated the value: %v by user %v to %v by user %v", temp.value, temp.userId, s.latestValue.value, s.latestValue.userId)
+	s.lamportTimeStamp = (s.lamportTimeStamp + 1)
+	h.LoggerWithTimestamp("send - "+msg, SERVER_LOG_FILE, s.lamportTimeStamp)
 	s.arbiter.Unlock()
-	return &Proto.Response{Msg: msg, Timestamp: (s.lamportTimeStamp + 1)}, nil
+	return &Proto.Response{Msg: msg, Timestamp: s.lamportTimeStamp}, nil
 }
 
 // start server service
@@ -106,7 +114,7 @@ func listen(s *Server) {
 	h.CheckError(errorMsg, "server listen register server service")
 }
 
-//
+
 func (s *Server) IncrementLamportTimestamp(clientTimeStamp int64) {
 	s.lamportTimeStamp = (h.Max(clientTimeStamp, s.lamportTimeStamp) + 1)
 }
