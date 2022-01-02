@@ -52,28 +52,37 @@ func (u *User) ListenForInput(client Proto.ProtoServiceClient, ctx context.Conte
 		if len(input) > 0 {
 			switch input {
 			case "joinchat":
-				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId})
+				u.arbiter.Lock()
+				response, err := client.JoinService(ctx, &Proto.JoinRequest{UserId: u.userId, Timestamp: (u.lamportTimeStamp + 1)})
 				h.CheckError(err, "listenForInput joinchat")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
+				u.arbiter.Unlock()
+
 				fmt.Println(response.GetMsg())
 			case "getvalue":
+				u.arbiter.Lock()
 
-				response, err := client.GetValue(ctx, &Proto.GetRequest{})
-
+				response, err := client.GetValue(ctx, &Proto.GetRequest{Timestamp: (u.lamportTimeStamp + 1)})
 				h.CheckError(err, "ListenForInput getvalue")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
+				u.arbiter.Unlock()
+
 				fmt.Println(response)
 			case "setvalue":
 				var value int64
-				for value == 0{
+				for value == 0 {
 					fmt.Println("Choose an none 0 integer you want the value set to")
 					fmt.Scanln(&value)
 				}
-				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value})
+
+				u.arbiter.Lock()
+				response, err := client.SetValue(ctx, &Proto.SetRequest{UserId: u.userId, RequestedValue: value, Timestamp: (u.lamportTimeStamp + 1)})
 				h.CheckError(err, "ListenForInput setvalue")
 				u.IncrementLamportTimestamp(response.GetTimestamp())
+				u.arbiter.Unlock()
+
 				fmt.Println(response.GetMsg())
-				value = 0
+				value = 0 // reset the value
 			}
 		}
 	}

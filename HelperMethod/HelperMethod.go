@@ -1,6 +1,7 @@
 package helpermethod
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
@@ -33,7 +34,6 @@ func Max(clientTimeStamp int64, serverTimeStamp int64) int64{
 	return clientTimeStamp
 }
 	
-
 
 // for formating easier to verify
 func LoggerWithTimestamp(message string, logFileName string, timestamp int64) {
