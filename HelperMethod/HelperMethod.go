@@ -23,3 +23,11 @@ func Logger(message string, logFileName string) {
 	log.SetOutput(f)
 	log.Println(message)
 }
+
+// for lamport time stamp
+func Max(clientTimeStamp int64, serverTimeStamp int64) int64 {
+	if clientTimeStamp <= serverTimeStamp {
+		return serverTimeStamp
+	}
+	return clientTimeStamp
+}
