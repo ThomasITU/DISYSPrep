@@ -1,0 +1,6 @@
+2022/01/02 19:58:42 Timestamp(1): Send request: Joining service
+2022/01/02 19:58:42 Timestamp(10): Receive response: Joining service
+2022/01/02 19:59:00 Timestamp(11): Send request - getvalue: 
+2022/01/02 19:59:00 Timestamp(14): Receive response - getvalue: currentValue:55  userId:4  timestamp:13
+2022/01/02 19:59:11 Timestamp(15): Send request - setvalue: 
+2022/01/02 19:59:11 Timestamp(18): Receive response - setvalue: Updated the value: 55 by user 4 to 2 by user 77

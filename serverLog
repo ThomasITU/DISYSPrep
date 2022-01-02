@@ -1,0 +1,12 @@
+2022/01/02 19:57:59 Timestamp(2): request Received: joinservice user(4)
+2022/01/02 19:57:59 Timestamp(3): send: Welcome user: 4
+2022/01/02 19:58:16 Timestamp(6): request received: setvalue
+2022/01/02 19:58:16 Timestamp(7): send: Updated the value: -1 by user -1 to 55 by user 4
+2022/01/02 19:58:42 Timestamp(8): request Received: joinservice user(77)
+2022/01/02 19:58:42 Timestamp(9): send: Welcome user: 77
+2022/01/02 19:59:00 Timestamp(12): request received: getvalue
+2022/01/02 19:59:00 Timestamp(13): send: value: 55 by user: 4
+2022/01/02 19:59:11 Timestamp(16): request received: setvalue
+2022/01/02 19:59:11 Timestamp(17): send: Updated the value: 55 by user 4 to 2 by user 77
+2022/01/02 19:59:27 Timestamp(18): request received: getvalue
+2022/01/02 19:59:27 Timestamp(19): send: value: 2 by user: 77
